@@ -4,7 +4,10 @@ import re
 import json
 import time
 import requests
-
+try:
+    import urlparse as parse
+except:
+    from urllib import parse
 
 try:
     from PIL import Image
@@ -25,20 +28,33 @@ class ZhihuSpider(scrapy.Spider):
     session = requests.session()
 
     def parse(self, response):
+        """
+        提取出html页面中的所有url,并跟踪这些url进行进一步爬取
+        如果提取的url中格式为 /question/xxx  就下载之后直接进入解析函数
+        """
+        response_text = response.text
         all_urls = response.css("a::attr(href)").extract()
+        all_urls = [parse.urljoin(response.url,url) for url in all_urls]
+        all_urls = filter(lambda x:True if x.startswith("https") else False,all_urls)
+
+        for url in all_urls:
+            print(url)
+            match_obj = re.match("(.*zhihu.com/question/(/d+))(/|$).*",url)
+            if match_obj:
+                request_url = match_obj.group(1)
+                request_id = match_obj.group(2)
+                print(request_id,request_url)
+            pass
+
+    def parse_detail(self,response):
         pass
 
     def start_requests(self):
-        return [scrapy.Request("https://www.zhihu.com/#signin",headers = self.header,callback = self.longin)]
+        t = str(int(time.time() * 1000))
+        captcha_url = 'https://www.zhihu.com/captcha.gif?r=' + t + '&type=login&lang=en'
+        return [scrapy.Request(url = captcha_url,headers = self.header,callback = self.get_captcha)]
 
-    def longin(self,response):
-        if self.is_login:
-            print('您已经登录')
-            for url in self.start_urls:
-                yield scrapy.Request(url, dont_filter=True, headers=self.header)
-        else:
-            account = input('请输入你的用户名\n>  ')
-            password = input("请输入你的密码\n>  ")
+    def login(self,response):
             response_text = response.text
             match_obj = re.match('.*name="_xsrf" value="(.*?)"', response_text,re.DOTALL)
             xsrf = ""
@@ -48,29 +64,22 @@ class ZhihuSpider(scrapy.Spider):
                     post_url = "https://www.zhihu.com/login/phone_num"
                     post_data = {
                         "_xsrf": xsrf,
-                        "phone_num": account,
-                        "password": password
+                        "phone_num": "your phone number",
+                        "password": "your password",
+                        "captcha": response.meta['captcha']
                     }
-                    response_text = self.session.post(url = post_url, data=post_data, headers= self.header)
-                    text_json = response_text.json()
-                    if text_json['r'] == 1:
-                        # 不输入验证码登录失败
-                        # 使用需要输入验证码的方式登录
-                        post_data["captcha"] = self.get_captcha()
 
-                        return [scrapy.FormRequest(
-                            url = post_url,
-                            formdata = post_data,
-                            headers = self.header,
-                            callback = self.check_login,
-                        )]
+                    return [scrapy.FormRequest(
+                        url = post_url,
+                        formdata = post_data,
+                        headers = self.header,
+                        callback = self.check_login,
+                    )]
 
-    def get_captcha(self):
-        t = str(int(time.time() * 1000))
-        captcha_url = 'https://www.zhihu.com/captcha.gif?r=' + t + "&type=login"
-        r = self.session.get(captcha_url, headers = self.header)
+    def get_captcha(self,response):
+        print(response.meta.get("post_data"))
         with open('captcha.jpg', 'wb') as f:
-            f.write(r.content)
+            f.write(response.body)
             f.close()
             # 用pillow 的 Image 显示验证码
             # 如果没有安装 pillow 到源代码所在的目录去找到验证码然后手动输入
@@ -80,7 +89,12 @@ class ZhihuSpider(scrapy.Spider):
             im.close()
 
         captcha = input("please input the captcha\n>")
-        return captcha
+        return scrapy.FormRequest(
+            url ='https://www.zhihu.com/#signin',
+            headers = self.header,
+            callback = self.login,
+            meta = {'captcha': captcha}
+        )
 
     def check_login(self,response):
         # 验证服务器的返回数据判断是否成功
@@ -89,14 +103,9 @@ class ZhihuSpider(scrapy.Spider):
             for url in self.start_urls:
                 yield scrapy.Request(url, dont_filter = True, headers = self.header)
 
-    def is_login(self):
-        # 通过个人中心页面返回状态码来判断是否为登录状态
-        inbox_url = "https://www.zhihu.com/inbox"
-        response = self.session.get(inbox_url, headers=self.header, allow_redirects=False)
-        if response.status_code == 200:
-            return True
-        else:
-            return False
+
+
+
 
 
 
