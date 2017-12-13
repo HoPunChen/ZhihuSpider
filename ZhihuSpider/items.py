@@ -29,3 +29,17 @@ class ZhihuQuestionItem(scrapy.Item):
     crawl_time = scrapy.Field()
     crawl_update_time = scrapy.Field()
 
+class ZhihuAnswerItem(scrapy.Item):
+    #知乎的回答 item
+    zhihu_id = scrapy.Field()
+    url = scrapy.Field()
+    question_id = scrapy.Field()
+    author_id = scrapy.Field()
+    content = scrapy.Field()
+    praise_num = scrapy.Field()
+    comments_num = scrapy.Field()
+    create_time = scrapy.Field()
+    update_time = scrapy.Field()
+    crawl_time = scrapy.Field()
+    crawl_update_time = scrapy.Field()
+
