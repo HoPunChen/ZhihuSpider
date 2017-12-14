@@ -48,9 +48,12 @@ class ZhihuSpider(scrapy.Spider):
                 #如果提取到question相关页面则下载后交由提取函数提取
                 request_url = match_obj.group(1)
                 yield scrapy.Request(url = request_url,headers = self.header,callback = self.parse_question)
+                break
             else:
                 #如果不是question页面则进一步跟踪
-                yield scrapy.Request(url,headers = self.header,callback = self.parse)
+                # yield scrapy.Request(url,headers = self.header,callback = self.parse)
+                pass
+
 
 
     def parse_question(self,response):
