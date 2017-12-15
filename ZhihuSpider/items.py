@@ -56,7 +56,7 @@ class ZhihuQuestionItem(scrapy.Item):
             watch_user_num = int(self["watch_user_num"][0])
             click_num = 0
 
-        crawl_time = self["crawl_time"].strftime(SQL_DATETIME_FORMAT)
+        crawl_time = datetime.datetime.now().strftime(SQL_DATETIME_FORMAT)
 
         params = (zhihu_id, topics, url, title, content, answer_num, comments_num,watch_user_num, click_num, crawl_time)
         return insert_sql,params
@@ -78,10 +78,10 @@ class ZhihuAnswerItem(scrapy.Item):
     def get_insert_sql(self):
         # 插入知乎answer表的sql语句
         insert_sql = """
-            insert into zhihu_answer(zhihu_id, url, question_id, author_id, content, parise_num, comments_num,
+            insert into zhihu_answer(zhihu_id, url, question_id, author_id, content, praise_num, comments_num,
               create_time, update_time, crawl_time
               ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-              ON DUPLICATE KEY UPDATE content=VALUES(content), comments_num=VALUES(comments_num), parise_num=VALUES(parise_num),
+              ON DUPLICATE KEY UPDATE content=VALUES(content), comments_num=VALUES(comments_num), praise_num=VALUES(praise_num),
               update_time=VALUES(update_time)
         """
 
@@ -89,7 +89,7 @@ class ZhihuAnswerItem(scrapy.Item):
         update_time = datetime.datetime.fromtimestamp(self["update_time"]).strftime(SQL_DATETIME_FORMAT)
         params = (
             self["zhihu_id"], self["url"], self["question_id"],
-            self["author_id"], self["content"], self["parise_num"],
+            self["author_id"], self["content"], self["praise_num"],
             self["comments_num"], create_time, update_time,
             self["crawl_time"].strftime(SQL_DATETIME_FORMAT),
         )
